@@ -12,6 +12,8 @@
             --secondary-hover: #0284c7;
             --success-color: #10b981;
             --success-hover: #059669;
+            --neutral-color: #6b7280;
+            --neutral-hover: #4b5563;
             --bg-color: #f3f4f6;
             --card-bg: #ffffff;
             --text-main: #1f2937;
@@ -78,6 +80,52 @@
             box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
         }
 
+        /* Calculator Action Buttons Layout */
+        .calc-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: background-color 0.2s;
+            color: white;
+            text-align: center;
+        }
+
+        .btn-calc {
+            background-color: var(--success-color);
+        }
+
+        .btn-calc:hover {
+            background-color: var(--success-hover);
+        }
+
+        .btn-reset {
+            background-color: var(--neutral-color);
+        }
+
+        .btn-reset:hover {
+            background-color: var(--neutral-hover);
+        }
+
+        .btn-pin {
+            width: 100%;
+            background-color: var(--primary-color);
+            margin-top: 12px;
+        }
+
+        .btn-pin:hover {
+            background-color: var(--primary-hover);
+        }
+
         .results-section {
             margin-top: 24px;
             padding-top: 20px;
@@ -100,24 +148,6 @@
 
         .result-value {
             font-weight: 600;
-        }
-
-        .btn-pin {
-            width: 100%;
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 12px;
-            border-radius: 6px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            margin-top: 15px;
-            transition: background-color 0.2s;
-        }
-
-        .btn-pin:hover {
-            background-color: var(--primary-hover);
         }
 
         /* Pinned Section Styles */
@@ -237,7 +267,7 @@
     
     <div class="input-group">
         <label for="amount">Principal Amount</label>
-        <input type="text" id="amount" placeholder="e.g. 1,00,000" value="1,90,000">
+        <input type="text" id="amount" placeholder="e.g. 1,00,000" value="1,00,000">
     </div>
 
     <div class="input-group">
@@ -253,6 +283,11 @@
     <div class="input-group">
         <label for="tds">TDS (%)</label>
         <input type="number" step="0.1" id="tds" placeholder="e.g. 10" value="10">
+    </div>
+
+    <div class="calc-actions">
+        <button class="btn btn-calc" id="calc-btn">Calculate</button>
+        <button class="btn btn-reset" id="reset-btn">Reset</button>
     </div>
 
     <div class="results-section">
@@ -274,7 +309,7 @@
         </div>
     </div>
 
-    <button class="btn-pin" id="pin-btn">Pin This Calculation</button>
+    <button class="btn btn-pin" id="pin-btn">Pin This Calculation</button>
 </div>
 
 <div class="pinned-container" id="pinned-box" style="display: none;">
@@ -327,6 +362,8 @@
     const resNetInterest = document.getElementById('res-net-interest');
     const resMonthly = document.getElementById('res-monthly');
     
+    const calcBtn = document.getElementById('calc-btn');
+    const resetBtn = document.getElementById('reset-btn');
     const pinBtn = document.getElementById('pin-btn');
     const pinnedBox = document.getElementById('pinned-box');
     const pinnedRows = document.getElementById('pinned-rows');
@@ -349,6 +386,7 @@
         return parseFloat(value.replace(/,/g, '')) || 0;
     }
 
+    // Main calculation logic
     function calculate() {
         const principal = getRawNumber(amountInput.value);
         const months = parseFloat(periodInput.value) || 0;
@@ -356,10 +394,7 @@
         const tdsPercent = parseFloat(tdsInput.value) || 0;
 
         if (principal <= 0 || months <= 0 || annualRoi <= 0) {
-            resInterest.textContent = "0.00";
-            resTds.textContent = "0.00";
-            resNetInterest.textContent = "0.00";
-            resMonthly.textContent = "0.00";
+            clearOutputs();
             currentCalculation = null;
             return;
         }
@@ -383,6 +418,13 @@
             netInterest,
             monthlyAmount
         };
+    }
+
+    function clearOutputs() {
+        resInterest.textContent = "0.00";
+        resTds.textContent = "0.00";
+        resNetInterest.textContent = "0.00";
+        resMonthly.textContent = "0.00";
     }
 
     function saveToLocalStorage() {
@@ -442,9 +484,22 @@
         document.getElementById('total-monthly-sum').textContent = formatCurrency(sumMonthly);
     }
 
+    // Explicit Calculation Trigger Button Event
+    calcBtn.addEventListener('click', calculate);
+
+    // Reset Button Event
+    resetBtn.addEventListener('click', () => {
+        amountInput.value = "1,00,000";
+        periodInput.value = "18";
+        roiInput.value = "6.45";
+        tdsInput.value = "10";
+        clearOutputs();
+        currentCalculation = null;
+    });
+
+    // Pin Functionality
     pinBtn.addEventListener('click', () => {
-        // FIX: Force a fresh calculation pass immediately on click
-        calculate();
+        calculate(); // Guarantee we have calculation data based on current field values
         
         if (!currentCalculation) return;
         
@@ -468,9 +523,9 @@
         updatePinnedTable();
     };
 
+    // --- JSON Export/Import Logic ---
     exportBtn.addEventListener('click', () => {
         if (pinnedCalculations.length === 0) return;
-
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(pinnedCalculations, null, 2));
         const downloadAnchor = document.createElement('a');
         downloadAnchor.setAttribute("href", dataStr);
@@ -497,7 +552,7 @@
                     saveToLocalStorage();
                     updatePinnedTable();
                 } else {
-                    alert("Invalid file structure. Make sure it's a valid calculations backup file.");
+                    alert("Invalid file structure.");
                 }
             } catch (err) {
                 alert("Failed to parse JSON file.");
@@ -507,21 +562,18 @@
         reader.readAsText(file);
     });
 
+    // Handle Comma Filtering dynamically for principal field typing experience
     amountInput.addEventListener('input', function(e) {
         let cleanValue = e.target.value.replace(/,/g, '');
         if (!isNaN(cleanValue) && cleanValue !== '') {
             let parsed = parseFloat(cleanValue);
             e.target.value = parsed.toLocaleString('en-IN');
         }
-        calculate();
     });
 
-    [periodInput, roiInput, tdsInput].forEach(input => {
-        input.addEventListener('input', calculate);
-    });
-
+    // Execution on loading
     loadFromLocalStorage();
-    calculate();
+    calculate(); // Initializes with standard calculations at startup
     updatePinnedTable();
 </script>
 
