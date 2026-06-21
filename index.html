@@ -385,12 +385,10 @@
         };
     }
 
-    // Save array state to LocalStorage
     function saveToLocalStorage() {
         localStorage.setItem('pinnedCalculationsData', JSON.stringify(pinnedCalculations));
     }
 
-    // Load array state from LocalStorage on page initialization
     function loadFromLocalStorage() {
         const storedData = localStorage.getItem('pinnedCalculationsData');
         if (storedData) {
@@ -420,4 +418,112 @@
             sumInterest += item.totalInterest;
             sumTds += item.tdsAmount;
             sumNet += item.netInterest;
-            sumMonthly +=
+            sumMonthly += item.monthlyAmount;
+
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="text-left">${index + 1}</td>
+                <td class="text-left timestamp-cell">${item.timestamp}</td>
+                <td>${formatCurrency(item.principal)}</td>
+                <td>${item.months}</td>
+                <td>${item.roi}%</td>
+                <td>${formatCurrency(item.totalInterest)}</td>
+                <td>${formatCurrency(item.tdsAmount)}</td>
+                <td>${formatCurrency(item.netInterest)}</td>
+                <td><strong>${formatCurrency(item.monthlyAmount)}</strong></td>
+                <td class="text-center"><button class="btn-delete" onclick="deletePinned(${index})">✕</button></td>
+            `;
+            pinnedRows.appendChild(row);
+        });
+
+        document.getElementById('total-interest-sum').textContent = formatCurrency(sumInterest);
+        document.getElementById('total-tds-sum').textContent = formatCurrency(sumTds);
+        document.getElementById('total-net-sum').textContent = formatCurrency(sumNet);
+        document.getElementById('total-monthly-sum').textContent = formatCurrency(sumMonthly);
+    }
+
+    pinBtn.addEventListener('click', () => {
+        // FIX: Force a fresh calculation pass immediately on click
+        calculate();
+        
+        if (!currentCalculation) return;
+        
+        const now = new Date();
+        const dateString = now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+        const timeString = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const currentTimestamp = `${dateString} ${timeString}`;
+
+        pinnedCalculations.push({ 
+            ...currentCalculation, 
+            timestamp: currentTimestamp 
+        });
+        
+        saveToLocalStorage();
+        updatePinnedTable();
+    });
+
+    window.deletePinned = function(index) {
+        pinnedCalculations.splice(index, 1);
+        saveToLocalStorage();
+        updatePinnedTable();
+    };
+
+    exportBtn.addEventListener('click', () => {
+        if (pinnedCalculations.length === 0) return;
+
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(pinnedCalculations, null, 2));
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", `pinned_calculations_${new Date().toISOString().slice(0,10)}.json`);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+    });
+
+    importTriggerBtn.addEventListener('click', () => {
+        fileInput.click();
+    });
+
+    fileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            try {
+                const parsedData = JSON.parse(event.target.result);
+                if (Array.isArray(parsedData)) {
+                    pinnedCalculations = parsedData;
+                    saveToLocalStorage();
+                    updatePinnedTable();
+                } else {
+                    alert("Invalid file structure. Make sure it's a valid calculations backup file.");
+                }
+            } catch (err) {
+                alert("Failed to parse JSON file.");
+            }
+            fileInput.value = '';
+        };
+        reader.readAsText(file);
+    });
+
+    amountInput.addEventListener('input', function(e) {
+        let cleanValue = e.target.value.replace(/,/g, '');
+        if (!isNaN(cleanValue) && cleanValue !== '') {
+            let parsed = parseFloat(cleanValue);
+            e.target.value = parsed.toLocaleString('en-IN');
+        }
+        calculate();
+    });
+
+    [periodInput, roiInput, tdsInput].forEach(input => {
+        input.addEventListener('input', calculate);
+    });
+
+    loadFromLocalStorage();
+    calculate();
+    updatePinnedTable();
+</script>
+
+</body>
+</html>
