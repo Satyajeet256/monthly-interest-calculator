@@ -123,7 +123,7 @@
             border-radius: 12px;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
             width: 100%;
-            max-width: 800px;
+            max-width: 900px;
             overflow-x: auto;
         }
 
@@ -144,6 +144,7 @@
         th, td {
             padding: 10px 12px;
             border-bottom: 1px solid var(--border-color);
+            white-space: nowrap;
         }
 
         th {
@@ -158,6 +159,15 @@
 
         .text-left {
             text-align: left;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .timestamp-cell {
+            font-size: 0.8rem;
+            color: var(--text-muted);
         }
 
         .btn-delete {
@@ -228,6 +238,7 @@
         <thead>
             <tr>
                 <th class="text-left">#</th>
+                <th class="text-left">Pinned On</th>
                 <th>Principal</th>
                 <th>Months</th>
                 <th>ROI</th>
@@ -235,14 +246,14 @@
                 <th>TDS</th>
                 <th>Net Interest</th>
                 <th>Monthly Amt</th>
-                <th>Action</th>
+                <th class="text-center">Action</th>
             </tr>
         </thead>
         <tbody id="pinned-rows">
             </tbody>
         <tfoot>
             <tr class="grand-total-row" id="grand-total-row">
-                <td class="text-left" colspan="4">Grand Total / Cumulative Summary:</td>
+                <td class="text-left" colspan="5">Grand Total / Cumulative Summary:</td>
                 <td id="total-interest-sum">0.00</td>
                 <td id="total-tds-sum">0.00</td>
                 <td id="total-net-sum">0.00</td>
@@ -268,10 +279,7 @@
     const pinnedBox = document.getElementById('pinned-box');
     const pinnedRows = document.getElementById('pinned-rows');
 
-    // Array to hold pinned objects
     let pinnedCalculations = [];
-
-    // Global calculated state
     let currentCalculation = null;
 
     function formatCurrency(num) {
@@ -310,7 +318,6 @@
         resNetInterest.textContent = formatCurrency(netInterest);
         resMonthly.textContent = formatCurrency(monthlyAmount);
 
-        // Store active values globally for pinning logic
         currentCalculation = {
             principal,
             months,
@@ -322,7 +329,6 @@
         };
     }
 
-    // Dynamic UI builder for pinned items
     function updatePinnedTable() {
         if (pinnedCalculations.length === 0) {
             pinnedBox.style.display = 'none';
@@ -346,6 +352,7 @@
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td class="text-left">${index + 1}</td>
+                <td class="text-left timestamp-cell">${item.timestamp}</td>
                 <td>${formatCurrency(item.principal)}</td>
                 <td>${item.months}</td>
                 <td>${item.roi}%</td>
@@ -353,34 +360,40 @@
                 <td>${formatCurrency(item.tdsAmount)}</td>
                 <td>${formatCurrency(item.netInterest)}</td>
                 <td><strong>${formatCurrency(item.monthlyAmount)}</strong></td>
-                <td><button class="btn-delete" onclick="deletePinned(${index})">✕</button></td>
+                <td class="text-center"><button class="btn-delete" onclick="deletePinned(${index})">✕</button></td>
             `;
             pinnedRows.appendChild(row);
         });
 
-        // Update footer summary elements with combined values
         document.getElementById('total-interest-sum').textContent = formatCurrency(sumInterest);
         document.getElementById('total-tds-sum').textContent = formatCurrency(sumTds);
         document.getElementById('total-net-sum').textContent = formatCurrency(sumNet);
         document.getElementById('total-monthly-sum').textContent = formatCurrency(sumMonthly);
     }
 
-    // Pin current values event handle
     pinBtn.addEventListener('click', () => {
         if (!currentCalculation) return;
         
-        // Push copy of object to array
-        pinnedCalculations.push({ ...currentCalculation });
+        // Generate current local date and time string
+        const now = new Date();
+        const dateString = now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+        const timeString = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const currentTimestamp = `${dateString} ${timeString}`;
+
+        // Save entry with the exact timestamp
+        pinnedCalculations.push({ 
+            ...currentCalculation, 
+            timestamp: currentTimestamp 
+        });
+        
         updatePinnedTable();
     });
 
-    // Delete scoped reference function
     window.deletePinned = function(index) {
         pinnedCalculations.splice(index, 1);
         updatePinnedTable();
     };
 
-    // Auto layout and logic bindings
     amountInput.addEventListener('input', function(e) {
         let cleanValue = e.target.value.replace(/,/g, '');
         if (!isNaN(cleanValue) && cleanValue !== '') {
