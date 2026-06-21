@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monthly Interest Calculator</title>
+    <style>
+        :root {
+            --primary-color: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg-color: #f3f4f6;
+            --card-bg: #ffffff;
+            --text-main: #1f2937;
+            --text-muted: #4b5563;
+            --border-color: #e5e7eb;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .calculator-container {
+            background-color: var(--card-bg);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            width: 100%;
+            max-width: 450px;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            text-align: center;
+            margin-bottom: 24px;
+            color: var(--text-main);
+        }
+
+        .input-group {
+            margin-bottom: 16px;
+        }
+
+        label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 6px;
+            color: var(--text-muted);
+        }
+
+        input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 1rem;
+            box-sizing: border-box;
+            transition: border-color 0.2s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+
+        .results-section {
+            margin-top: 24px;
+            padding-top: 20px;
+            border-top: 2px dashed var(--border-color);
+        }
+
+        .result-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            font-size: 0.95rem;
+        }
+
+        .result-row.total {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-top: 8px;
+        }
+
+        .result-value {
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+
+<div class="calculator-container">
+    <h1>Monthly Interest Calculator</h1>
+    
+    <div class="input-group">
+        <label for="amount">Principal Amount</label>
+        <input type="number" id="amount" placeholder="e.g. 100000" value="100000">
+    </div>
+
+    <div class="input-group">
+        <label for="period">Period (Months)</label>
+        <input type="number" id="period" placeholder="e.g. 12" value="12">
+    </div>
+
+    <div class="input-group">
+        <label for="roi">Rate of Interest (ROI % per annum)</label>
+        <input type="number" step="0.1" id="roi" placeholder="e.g. 7.5" value="7.5">
+    </div>
+
+    <div class="input-group">
+        <label for="tds">TDS (%)</label>
+        <input type="number" step="0.1" id="tds" placeholder="e.g. 10" value="10">
+    </div>
+
+    <div class="results-section">
+        <div class="result-row">
+            <span>Total Interest:</span>
+            <span class="result-value" id="res-interest">0.00</span>
+        </div>
+        <div class="result-row">
+            <span>TDS Amount Deducted:</span>
+            <span class="result-value" id="res-tds">0.00</span>
+        </div>
+        <div class="result-row">
+            <span>Net Interest (Interest - TDS):</span>
+            <span class="result-value" id="res-net-interest">0.00</span>
+        </div>
+        <div class="result-row total">
+            <span>Monthly Amount:</span>
+            <span class="result-value" id="res-monthly">0.00</span>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Get DOM elements
+    const amountInput = document.getElementById('amount');
+    const periodInput = document.getElementById('period');
+    const roiInput = document.getElementById('roi');
+    const tdsInput = document.getElementById('tds');
+
+    const resInterest = document.getElementById('res-interest');
+    const resTds = document.getElementById('res-tds');
+    const resNetInterest = document.getElementById('res-net-interest');
+    const resMonthly = document.getElementById('res-monthly');
+
+    function calculate() {
+        // Parse input values
+        const principal = parseFloat(amountInput.value) || 0;
+        const months = parseFloat(periodInput.value) || 0;
+        const annualRoi = parseFloat(roiInput.value) || 0;
+        const tdsPercent = parseFloat(tdsInput.value) || 0;
+
+        if (principal <= 0 || months <= 0 || annualRoi <= 0) {
+            resInterest.textContent = "0.00";
+            resTds.textContent = "0.00";
+            resNetInterest.textContent = "0.00";
+            resMonthly.textContent = "0.00";
+            return;
+        }
+
+        // 1. Calculate Total Simple Interest for the given period (in months)
+        // Formula: (P * R * T) / 100 where T = months / 12
+        const totalInterest = (principal * annualRoi * (months / 12)) / 100;
+
+        // 2. Calculate TDS Amount
+        const tdsAmount = (totalInterest * tdsPercent) / 100;
+
+        // 3. Net Interest (Interest - TDS)
+        const netInterest = totalInterest - tdsAmount;
+
+        // 4. Monthly Amount (Net Interest distributed over the period in months)
+        const monthlyAmount = months > 0 ? (netInterest / months) : 0;
+
+        // Display results rounded to 2 decimal places
+        resInterest.textContent = totalInterest.toFixed(2);
+        resTds.textContent = tdsAmount.toFixed(2);
+        resNetInterest.textContent = netInterest.toFixed(2);
+        resMonthly.textContent = monthlyAmount.toFixed(2);
+    }
+
+    // Attach real-time input event listeners
+    [amountInput, periodInput, roiInput, tdsInput].forEach(input => {
+        input.addEventListener('input', calculate);
+    });
+
+    // Initial calculation run on load
+    calculate();
+</script>
+
+</body>
+</html>
