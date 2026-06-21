@@ -8,6 +8,10 @@
         :root {
             --primary-color: #4f46e5;
             --primary-hover: #4338ca;
+            --secondary-color: #0ea5e9;
+            --secondary-hover: #0284c7;
+            --success-color: #10b981;
+            --success-hover: #059669;
             --bg-color: #f3f4f6;
             --card-bg: #ffffff;
             --text-main: #1f2937;
@@ -123,15 +127,56 @@
             border-radius: 12px;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
             width: 100%;
-            max-width: 900px;
+            max-width: 950px;
             overflow-x: auto;
+        }
+
+        .pinned-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 16px;
         }
 
         h2 {
             font-size: 1.25rem;
-            margin-top: 0;
-            margin-bottom: 16px;
+            margin: 0;
             color: var(--text-main);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-action {
+            background-color: var(--secondary-color);
+            color: white;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .btn-action:hover {
+            background-color: var(--secondary-hover);
+        }
+
+        .btn-import {
+            background-color: var(--success-color);
+        }
+
+        .btn-import:hover {
+            background-color: var(--success-hover);
+        }
+
+        #file-input {
+            display: none;
         }
 
         table {
@@ -233,7 +278,14 @@
 </div>
 
 <div class="pinned-container" id="pinned-box" style="display: none;">
-    <h2>Pinned Calculations & Cumulative Totals</h2>
+    <div class="pinned-header">
+        <h2>Pinned Calculations & Cumulative Totals</h2>
+        <div class="action-buttons">
+            <button class="btn-action" id="export-btn">⬇ Export JSON</button>
+            <button class="btn-action btn-import" id="import-trigger-btn">⬆ Import JSON</button>
+            <input type="file" id="file-input" accept=".json">
+        </div>
+    </div>
     <table>
         <thead>
             <tr>
@@ -278,6 +330,10 @@
     const pinBtn = document.getElementById('pin-btn');
     const pinnedBox = document.getElementById('pinned-box');
     const pinnedRows = document.getElementById('pinned-rows');
+    
+    const exportBtn = document.getElementById('export-btn');
+    const importTriggerBtn = document.getElementById('import-trigger-btn');
+    const fileInput = document.getElementById('file-input');
 
     let pinnedCalculations = [];
     let currentCalculation = null;
@@ -329,6 +385,23 @@
         };
     }
 
+    // Save array state to LocalStorage
+    function saveToLocalStorage() {
+        localStorage.setItem('pinnedCalculationsData', JSON.stringify(pinnedCalculations));
+    }
+
+    // Load array state from LocalStorage on page initialization
+    function loadFromLocalStorage() {
+        const storedData = localStorage.getItem('pinnedCalculationsData');
+        if (storedData) {
+            try {
+                pinnedCalculations = JSON.parse(storedData);
+            } catch (e) {
+                pinnedCalculations = [];
+            }
+        }
+    }
+
     function updatePinnedTable() {
         if (pinnedCalculations.length === 0) {
             pinnedBox.style.display = 'none';
@@ -347,68 +420,4 @@
             sumInterest += item.totalInterest;
             sumTds += item.tdsAmount;
             sumNet += item.netInterest;
-            sumMonthly += item.monthlyAmount;
-
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td class="text-left">${index + 1}</td>
-                <td class="text-left timestamp-cell">${item.timestamp}</td>
-                <td>${formatCurrency(item.principal)}</td>
-                <td>${item.months}</td>
-                <td>${item.roi}%</td>
-                <td>${formatCurrency(item.totalInterest)}</td>
-                <td>${formatCurrency(item.tdsAmount)}</td>
-                <td>${formatCurrency(item.netInterest)}</td>
-                <td><strong>${formatCurrency(item.monthlyAmount)}</strong></td>
-                <td class="text-center"><button class="btn-delete" onclick="deletePinned(${index})">✕</button></td>
-            `;
-            pinnedRows.appendChild(row);
-        });
-
-        document.getElementById('total-interest-sum').textContent = formatCurrency(sumInterest);
-        document.getElementById('total-tds-sum').textContent = formatCurrency(sumTds);
-        document.getElementById('total-net-sum').textContent = formatCurrency(sumNet);
-        document.getElementById('total-monthly-sum').textContent = formatCurrency(sumMonthly);
-    }
-
-    pinBtn.addEventListener('click', () => {
-        if (!currentCalculation) return;
-        
-        // Generate current local date and time string
-        const now = new Date();
-        const dateString = now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-        const timeString = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        const currentTimestamp = `${dateString} ${timeString}`;
-
-        // Save entry with the exact timestamp
-        pinnedCalculations.push({ 
-            ...currentCalculation, 
-            timestamp: currentTimestamp 
-        });
-        
-        updatePinnedTable();
-    });
-
-    window.deletePinned = function(index) {
-        pinnedCalculations.splice(index, 1);
-        updatePinnedTable();
-    };
-
-    amountInput.addEventListener('input', function(e) {
-        let cleanValue = e.target.value.replace(/,/g, '');
-        if (!isNaN(cleanValue) && cleanValue !== '') {
-            let parsed = parseFloat(cleanValue);
-            e.target.value = parsed.toLocaleString('en-IN');
-        }
-        calculate();
-    });
-
-    [periodInput, roiInput, tdsInput].forEach(input => {
-        input.addEventListener('input', calculate);
-    });
-
-    calculate();
-</script>
-
-</body>
-</html>
+            sumMonthly +=
