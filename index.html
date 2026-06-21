@@ -13,6 +13,7 @@
             --text-main: #1f2937;
             --text-muted: #4b5563;
             --border-color: #e5e7eb;
+            --danger-color: #ef4444;
         }
 
         body {
@@ -20,20 +21,22 @@
             background-color: var(--bg-color);
             color: var(--text-main);
             margin: 0;
-            padding: 20px;
+            padding: 40px 20px;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
             align-items: center;
             min-height: 100vh;
+            box-sizing: border-box;
         }
 
         .calculator-container {
             background-color: var(--card-bg);
             padding: 30px;
             border-radius: 12px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
             width: 100%;
-            max-width: 450px;
+            max-width: 500px;
+            margin-bottom: 30px;
         }
 
         h1 {
@@ -94,6 +97,82 @@
         .result-value {
             font-weight: 600;
         }
+
+        .btn-pin {
+            width: 100%;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: background-color 0.2s;
+        }
+
+        .btn-pin:hover {
+            background-color: var(--primary-hover);
+        }
+
+        /* Pinned Section Styles */
+        .pinned-container {
+            background-color: var(--card-bg);
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 800px;
+            overflow-x: auto;
+        }
+
+        h2 {
+            font-size: 1.25rem;
+            margin-top: 0;
+            margin-bottom: 16px;
+            color: var(--text-main);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: right;
+            font-size: 0.9rem;
+        }
+
+        th, td {
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            background-color: #f9fafb;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        tr:hover td {
+            background-color: #f9fafb;
+        }
+
+        .text-left {
+            text-align: left;
+        }
+
+        .btn-delete {
+            background: none;
+            border: none;
+            color: var(--danger-color);
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .grand-total-row {
+            font-weight: 700;
+            background-color: #f0fdf4 !important;
+            color: #166534;
+        }
     </style>
 </head>
 <body>
@@ -139,6 +218,39 @@
             <span class="result-value" id="res-monthly">0.00</span>
         </div>
     </div>
+
+    <button class="btn-pin" id="pin-btn">Pin This Calculation</button>
+</div>
+
+<div class="pinned-container" id="pinned-box" style="display: none;">
+    <h2>Pinned Calculations & Cumulative Totals</h2>
+    <table>
+        <thead>
+            <tr>
+                <th class="text-left">#</th>
+                <th>Principal</th>
+                <th>Months</th>
+                <th>ROI</th>
+                <th>Total Interest</th>
+                <th>TDS</th>
+                <th>Net Interest</th>
+                <th>Monthly Amt</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="pinned-rows">
+            </tbody>
+        <tfoot>
+            <tr class="grand-total-row" id="grand-total-row">
+                <td class="text-left" colspan="4">Grand Total / Cumulative Summary:</td>
+                <td id="total-interest-sum">0.00</td>
+                <td id="total-tds-sum">0.00</td>
+                <td id="total-net-sum">0.00</td>
+                <td id="total-monthly-sum">0.00</td>
+                <td></td>
+            </tr>
+        </tfoot>
+    </table>
 </div>
 
 <script>
@@ -151,8 +263,17 @@
     const resTds = document.getElementById('res-tds');
     const resNetInterest = document.getElementById('res-net-interest');
     const resMonthly = document.getElementById('res-monthly');
+    
+    const pinBtn = document.getElementById('pin-btn');
+    const pinnedBox = document.getElementById('pinned-box');
+    const pinnedRows = document.getElementById('pinned-rows');
 
-    // Helper function to format currency numbers with commas
+    // Array to hold pinned objects
+    let pinnedCalculations = [];
+
+    // Global calculated state
+    let currentCalculation = null;
+
     function formatCurrency(num) {
         return num.toLocaleString('en-IN', {
             minimumFractionDigits: 2,
@@ -160,7 +281,6 @@
         });
     }
 
-    // Helper function to strip commas back into a raw number for math processing
     function getRawNumber(value) {
         return parseFloat(value.replace(/,/g, '')) || 0;
     }
@@ -176,29 +296,91 @@
             resTds.textContent = "0.00";
             resNetInterest.textContent = "0.00";
             resMonthly.textContent = "0.00";
+            currentCalculation = null;
             return;
         }
 
-        // 1. Calculate Total Simple Interest
         const totalInterest = (principal * annualRoi * (months / 12)) / 100;
-
-        // 2. Calculate TDS Amount
         const tdsAmount = (totalInterest * tdsPercent) / 100;
-
-        // 3. Net Interest
         const netInterest = totalInterest - tdsAmount;
-
-        // 4. Monthly Amount 
         const monthlyAmount = months > 0 ? (netInterest / months) : 0;
 
-        // Display results formatted with commas
         resInterest.textContent = formatCurrency(totalInterest);
         resTds.textContent = formatCurrency(tdsAmount);
         resNetInterest.textContent = formatCurrency(netInterest);
         resMonthly.textContent = formatCurrency(monthlyAmount);
+
+        // Store active values globally for pinning logic
+        currentCalculation = {
+            principal,
+            months,
+            roi: annualRoi,
+            totalInterest,
+            tdsAmount,
+            netInterest,
+            monthlyAmount
+        };
     }
 
-    // Format the principal input dynamically as the user types
+    // Dynamic UI builder for pinned items
+    function updatePinnedTable() {
+        if (pinnedCalculations.length === 0) {
+            pinnedBox.style.display = 'none';
+            return;
+        }
+
+        pinnedBox.style.display = 'block';
+        pinnedRows.innerHTML = '';
+
+        let sumInterest = 0;
+        let sumTds = 0;
+        let sumNet = 0;
+        let sumMonthly = 0;
+
+        pinnedCalculations.forEach((item, index) => {
+            sumInterest += item.totalInterest;
+            sumTds += item.tdsAmount;
+            sumNet += item.netInterest;
+            sumMonthly += item.monthlyAmount;
+
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="text-left">${index + 1}</td>
+                <td>${formatCurrency(item.principal)}</td>
+                <td>${item.months}</td>
+                <td>${item.roi}%</td>
+                <td>${formatCurrency(item.totalInterest)}</td>
+                <td>${formatCurrency(item.tdsAmount)}</td>
+                <td>${formatCurrency(item.netInterest)}</td>
+                <td><strong>${formatCurrency(item.monthlyAmount)}</strong></td>
+                <td><button class="btn-delete" onclick="deletePinned(${index})">✕</button></td>
+            `;
+            pinnedRows.appendChild(row);
+        });
+
+        // Update footer summary elements with combined values
+        document.getElementById('total-interest-sum').textContent = formatCurrency(sumInterest);
+        document.getElementById('total-tds-sum').textContent = formatCurrency(sumTds);
+        document.getElementById('total-net-sum').textContent = formatCurrency(sumNet);
+        document.getElementById('total-monthly-sum').textContent = formatCurrency(sumMonthly);
+    }
+
+    // Pin current values event handle
+    pinBtn.addEventListener('click', () => {
+        if (!currentCalculation) return;
+        
+        // Push copy of object to array
+        pinnedCalculations.push({ ...currentCalculation });
+        updatePinnedTable();
+    });
+
+    // Delete scoped reference function
+    window.deletePinned = function(index) {
+        pinnedCalculations.splice(index, 1);
+        updatePinnedTable();
+    };
+
+    // Auto layout and logic bindings
     amountInput.addEventListener('input', function(e) {
         let cleanValue = e.target.value.replace(/,/g, '');
         if (!isNaN(cleanValue) && cleanValue !== '') {
@@ -208,12 +390,10 @@
         calculate();
     });
 
-    // Attach regular event listeners to other fields
     [periodInput, roiInput, tdsInput].forEach(input => {
         input.addEventListener('input', calculate);
     });
 
-    // Initial calculation run on load
     calculate();
 </script>
 
